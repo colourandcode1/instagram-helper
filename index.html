@@ -96,6 +96,9 @@
             border-radius: 4px;
             margin-bottom: 15px;
             font-size: 14px;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
         }
 
         .instagram-link:hover {
@@ -120,16 +123,41 @@
         }
 
         .randomize-btn {
-            font-size: 16px;
-            padding: 8px 12px;
-            min-width: 44px;
+            font-size: 14px;
+            padding: 6px 8px;
+            min-width: 36px;
+            max-width: 36px;
+            height: 36px;
             flex-shrink: 0;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .randomize-btn:hover {
             background: #7f8c8d;
             transform: rotate(180deg);
             transition: transform 0.3s ease;
+        }
+
+        @media (max-width: 600px) {
+            .randomize-btn {
+                font-size: 12px;
+                padding: 4px 6px;
+                min-width: 32px;
+                max-width: 32px;
+                height: 32px;
+            }
+            
+            .comment-row {
+                align-items: flex-start;
+                gap: 8px;
+            }
+            
+            .suggested-comment {
+                margin: 0;
+            }
         }
 
         .button-group {
@@ -499,14 +527,38 @@
             }
         }
 
+        // Open Instagram profile with app fallback
+        function openInstagramProfile(handle) {
+            const username = handle.replace('@', '');
+            const instagramAppUrl = `instagram://user?username=${username}`;
+            const instagramWebUrl = `https://www.instagram.com/${username}/`;
+            
+            // Try to open Instagram app first
+            const fallbackTimer = setTimeout(() => {
+                // If app doesn't open within 2 seconds, open web version
+                window.open(instagramWebUrl, '_blank');
+            }, 2000);
+            
+            // Attempt to open Instagram app
+            window.location.href = instagramAppUrl;
+            
+            // Clear timeout if app opens successfully
+            window.addEventListener('blur', () => {
+                clearTimeout(fallbackTimer);
+            });
+            
+            // Also clear timeout if user comes back quickly (app didn't open)
+            setTimeout(() => {
+                clearTimeout(fallbackTimer);
+            }, 500);
+        }
+
         // Format date
         function formatDate(dateString) {
             if (!dateString) return 'Never';
             const date = new Date(dateString);
             return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         }
-
-        // Render functions
         function renderDashboard() {
             const container = document.getElementById('dashboard-content');
             
@@ -532,7 +584,7 @@
                 return `
                     <div id="${cardId}" class="card friend-card">
                         <div class="friend-handle">${friend.handle}</div>
-                        <a href="${instagramUrl}" target="_blank" class="instagram-link">View Instagram Profile</a>
+                        <button class="instagram-link" onclick="openInstagramProfile('${friend.handle}')">View Instagram Profile</button>
                         <div class="comment-row">
                             <div class="suggested-comment">"${randomComment}"</div>
                             <button class="btn btn-secondary randomize-btn" onclick="randomizeComment('${friend.handle}', document.getElementById('${cardId}'))" title="Get different comment">🎲</button>
