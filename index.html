@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instagram Comment Helper</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f8f9fa;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #2c3e50;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 30px;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            background: white;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.2s;
+        }
+
+        .tab.active {
+            background: #3498db;
+            color: white;
+        }
+
+        .tab:hover:not(.active) {
+            background: #ecf0f1;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .friend-card {
+            border-left: 4px solid #3498db;
+        }
+
+        .friend-handle {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+
+        .instagram-link {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #e74c3c;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .instagram-link:hover {
+            background: #c0392b;
+        }
+
+        .suggested-comment {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 15px 0;
+            font-style: italic;
+            border-left: 3px solid #95a5a6;
+            flex: 1;
+        }
+
+        .comment-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 15px 0;
+        }
+
+        .randomize-btn {
+            font-size: 16px;
+            padding: 8px 12px;
+            min-width: 44px;
+            flex-shrink: 0;
+        }
+
+        .randomize-btn:hover {
+            background: #7f8c8d;
+            transform: rotate(180deg);
+            transition: transform 0.3s ease;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.2s;
+        }
+
+        .btn-primary {
+            background: #3498db;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #2980b9;
+        }
+
+        .btn-success {
+            background: #27ae60;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #229954;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+
+        .btn-secondary {
+            background: #95a5a6;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #7f8c8d;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            min-width: 200px;
+        }
+
+        .input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: white;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .list-item-content {
+            flex: 1;
+        }
+
+        .list-item-meta {
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+
+        .section-title {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+            font-style: italic;
+        }
+
+        .toast {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            background: #27ae60;
+            color: white;
+            border-radius: 4px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            z-index: 1000;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.3s ease;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        @media (max-width: 600px) {
+            .tabs {
+                flex-direction: column;
+            }
+            
+            .input-group {
+                flex-direction: column;
+            }
+            
+            .input {
+                min-width: auto;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Instagram Comment Helper</h1>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('dashboard')">Daily Dashboard</button>
+            <button class="tab" onclick="showTab('friends')">Friends Manager</button>
+            <button class="tab" onclick="showTab('comments')">Comment Bank</button>
+        </div>
+
+        <!-- Daily Dashboard -->
+        <div id="dashboard" class="tab-content active">
+            <h2 class="section-title">Today's Friend Queue</h2>
+            <div id="dashboard-content"></div>
+        </div>
+
+        <!-- Friends Manager -->
+        <div id="friends" class="tab-content">
+            <h2 class="section-title">Friends</h2>
+            <div class="input-group">
+                <input type="text" id="friend-input" class="input" placeholder="Enter Instagram handle (e.g., @alex_music)" />
+                <button class="btn btn-primary" onclick="addFriend()">+ Add Friend</button>
+            </div>
+            <div id="friends-list"></div>
+        </div>
+
+        <!-- Comment Bank -->
+        <div id="comments" class="tab-content">
+            <h2 class="section-title">Comment Bank</h2>
+            <div class="input-group">
+                <input type="text" id="comment-input" class="input" placeholder="Enter a supportive comment" />
+                <button class="btn btn-primary" onclick="addComment()">+ Add Comment</button>
+            </div>
+            <div id="comments-list"></div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        // Data storage
+        let friends = JSON.parse(localStorage.getItem('instagram-friends') || '[]');
+        let comments = JSON.parse(localStorage.getItem('instagram-comments') || '[]');
+
+        // Save data to localStorage
+        function saveData() {
+            localStorage.setItem('instagram-friends', JSON.stringify(friends));
+            localStorage.setItem('instagram-comments', JSON.stringify(comments));
+        }
+
+        // Show toast notification
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Tab management
+        function showTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Remove active class from all tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab content
+            document.getElementById(tabName).classList.add('active');
+            
+            // Add active class to clicked tab
+            event.target.classList.add('active');
+            
+            // Refresh the content
+            if (tabName === 'dashboard') renderDashboard();
+            if (tabName === 'friends') renderFriends();
+            if (tabName === 'comments') renderComments();
+        }
+
+        // Friend management
+        function addFriend() {
+            const input = document.getElementById('friend-input');
+            let handle = input.value.trim();
+            
+            if (!handle) return;
+            
+            // Add @ if not present
+            if (!handle.startsWith('@')) {
+                handle = '@' + handle;
+            }
+            
+            // Check for duplicates
+            if (friends.find(f => f.handle === handle)) {
+                showToast('Friend already exists!');
+                return;
+            }
+            
+            friends.push({
+                handle: handle,
+                lastCommented: null,
+                order: friends.length
+            });
+            
+            input.value = '';
+            saveData();
+            renderFriends();
+            showToast('Friend added!');
+        }
+
+        function deleteFriend(handle) {
+            friends = friends.filter(f => f.handle !== handle);
+            // Reorder remaining friends
+            friends.forEach((f, index) => f.order = index);
+            saveData();
+            renderFriends();
+            renderDashboard();
+            showToast('Friend deleted!');
+        }
+
+        function markFriendDone(handle) {
+            const friend = friends.find(f => f.handle === handle);
+            if (!friend) return;
+            
+            // Update last commented date
+            friend.lastCommented = new Date().toISOString().split('T')[0];
+            
+            // Move to back of queue
+            const maxOrder = Math.max(...friends.map(f => f.order));
+            friend.order = maxOrder + 1;
+            
+            saveData();
+            renderDashboard();
+            showToast('Marked as done! Friend moved to back of queue.');
+        }
+
+        // Comment management
+        function addComment() {
+            const input = document.getElementById('comment-input');
+            const comment = input.value.trim();
+            
+            if (!comment) return;
+            
+            // Check for duplicates
+            if (comments.includes(comment)) {
+                showToast('Comment already exists!');
+                return;
+            }
+            
+            comments.push(comment);
+            input.value = '';
+            saveData();
+            renderComments();
+            renderDashboard();
+            showToast('Comment added!');
+        }
+
+        function deleteComment(comment) {
+            comments = comments.filter(c => c !== comment);
+            saveData();
+            renderComments();
+            renderDashboard();
+            showToast('Comment deleted!');
+        }
+
+        // Copy to clipboard
+        async function copyToClipboard(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+                showToast('Comment copied to clipboard!');
+            } catch (err) {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = text;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                showToast('Comment copied to clipboard!');
+            }
+        }
+
+        // Get random comment
+        function getRandomComment() {
+            if (comments.length === 0) return null;
+            return comments[Math.floor(Math.random() * comments.length)];
+        }
+
+        // Get random comment excluding current one
+        function getRandomCommentExcluding(currentComment) {
+            if (comments.length <= 1) return getRandomComment();
+            let newComment;
+            do {
+                newComment = getRandomComment();
+            } while (newComment === currentComment && comments.length > 1);
+            return newComment;
+        }
+
+        // Randomize comment for a specific friend card
+        function randomizeComment(friendHandle, cardElement) {
+            const currentCommentElement = cardElement.querySelector('.suggested-comment');
+            const currentComment = currentCommentElement.textContent.replace(/"/g, '');
+            const newComment = getRandomCommentExcluding(currentComment);
+            
+            if (newComment) {
+                currentCommentElement.textContent = `"${newComment}"`;
+                // Update the copy button with new comment
+                const copyButton = cardElement.querySelector('.btn-primary');
+                copyButton.setAttribute('onclick', `copyToClipboard('${newComment.replace(/'/g, "\\'")}')`)
+            }
+        }
+
+        // Format date
+        function formatDate(dateString) {
+            if (!dateString) return 'Never';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+
+        // Render functions
+        function renderDashboard() {
+            const container = document.getElementById('dashboard-content');
+            
+            if (comments.length === 0) {
+                container.innerHTML = '<div class="empty-state">Please add some comments first in the Comment Bank tab!</div>';
+                return;
+            }
+            
+            if (friends.length === 0) {
+                container.innerHTML = '<div class="empty-state">No friends added yet. Add some in the Friends Manager tab!</div>';
+                return;
+            }
+            
+            // Sort friends by order and get first 5
+            const sortedFriends = [...friends].sort((a, b) => a.order - b.order);
+            const topFriends = sortedFriends.slice(0, 5);
+            
+            container.innerHTML = topFriends.map((friend, index) => {
+                const randomComment = getRandomComment();
+                const instagramUrl = `https://www.instagram.com/${friend.handle.replace('@', '')}/`;
+                const cardId = `friend-card-${index}`;
+                
+                return `
+                    <div id="${cardId}" class="card friend-card">
+                        <div class="friend-handle">${friend.handle}</div>
+                        <a href="${instagramUrl}" target="_blank" class="instagram-link">View Instagram Profile</a>
+                        <div class="comment-row">
+                            <div class="suggested-comment">"${randomComment}"</div>
+                            <button class="btn btn-secondary randomize-btn" onclick="randomizeComment('${friend.handle}', document.getElementById('${cardId}'))" title="Get different comment">🎲</button>
+                        </div>
+                        <div class="button-group">
+                            <button class="btn btn-primary" onclick="copyToClipboard('${randomComment.replace(/'/g, "\\'")}')">Copy Comment</button>
+                            <button class="btn btn-success" onclick="markFriendDone('${friend.handle}')">Mark Done</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderFriends() {
+            const container = document.getElementById('friends-list');
+            
+            if (friends.length === 0) {
+                container.innerHTML = '<div class="empty-state">No friends added yet. Add your first friend above!</div>';
+                return;
+            }
+            
+            // Sort friends by order
+            const sortedFriends = [...friends].sort((a, b) => a.order - b.order);
+            
+            container.innerHTML = sortedFriends.map(friend => `
+                <div class="list-item">
+                    <div class="list-item-content">
+                        <div><strong>${friend.handle}</strong></div>
+                        <div class="list-item-meta">Last Commented: ${formatDate(friend.lastCommented)}</div>
+                    </div>
+                    <button class="btn btn-danger" onclick="deleteFriend('${friend.handle}')">Delete</button>
+                </div>
+            `).join('');
+        }
+
+        function renderComments() {
+            const container = document.getElementById('comments-list');
+            
+            if (comments.length === 0) {
+                container.innerHTML = '<div class="empty-state">No comments added yet. Add your first comment above!</div>';
+                return;
+            }
+            
+            container.innerHTML = comments.map(comment => `
+                <div class="list-item">
+                    <div class="list-item-content">
+                        <div>"${comment}"</div>
+                    </div>
+                    <button class="btn btn-danger" onclick="deleteComment('${comment.replace(/'/g, "\\'")}')">Delete</button>
+                </div>
+            `).join('');
+        }
+
+        // Handle Enter key presses
+        document.getElementById('friend-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') addFriend();
+        });
+
+        document.getElementById('comment-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') addComment();
+        });
+
+        // Initial render
+        renderDashboard();
+        renderFriends();
+        renderComments();
+    </script>
+</body>
+</html>
