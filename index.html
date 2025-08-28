@@ -4,6 +4,41 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Instagram Comment Helper</title>
+    
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyA2ksO44JUzZ62ASZ_5ksq4k46ApZcAbXo",
+            authDomain: "instagram-helper-7540f.firebaseapp.com",
+            projectId: "instagram-helper-7540f",
+            storageBucket: "instagram-helper-7540f.firebasestorage.app",
+            messagingSenderId: "882798929067",
+            appId: "1:882798929067:web:f166ab744a788104c243ee",
+            measurementId: "G-VL8R7KW9ME"
+        }
+
+        @media (max-width: 600px) {;
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        window.auth = getAuth(app);
+        window.db = getFirestore(app);
+        
+        // Make Firebase functions available globally
+        window.signInWithEmailAndPassword = signInWithEmailAndPassword;
+        window.createUserWithEmailAndPassword = createUserWithEmailAndPassword;
+        window.signOut = signOut;
+        window.onAuthStateChanged = onAuthStateChanged;
+        window.doc = doc;
+        window.setDoc = setDoc;
+        window.getDoc = getDoc;
+        window.onSnapshot = onSnapshot;
+    </script>
+    
     <style>
         * {
             margin: 0;
@@ -141,7 +176,59 @@
             transition: transform 0.3s ease;
         }
 
-        @media (max-width: 600px) {
+        .auth-container {
+            max-width: 400px;
+            margin: 50px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .auth-toggle {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .auth-toggle button {
+            background: none;
+            border: none;
+            color: #3498db;
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        .user-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: #ecf0f1;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .sync-status {
+            font-size: 12px;
+            color: #27ae60;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .sync-status.syncing {
+            color: #f39c12;
+        }
+
+        .sync-status.error {
+            color: #e74c3c;
+        }
             .randomize-btn {
                 font-size: 12px;
                 padding: 4px 6px;
@@ -312,7 +399,22 @@
     </style>
 </head>
 <body>
-    <div class="container">
+    <!-- Authentication Screen -->
+    <div id="auth-screen" class="auth-container" style="display: none;">
+        <h1>Instagram Comment Helper</h1>
+        <div class="auth-form">
+            <input type="email" id="auth-email" class="input" placeholder="Email" required />
+            <input type="password" id="auth-password" class="input" placeholder="Password" required />
+            <button id="auth-submit" class="btn btn-primary">Sign In</button>
+            <div id="auth-error" style="color: #e74c3c; text-align: center; display: none;"></div>
+        </div>
+        <div class="auth-toggle">
+            <p id="auth-toggle-text">Don't have an account? <button id="auth-toggle-btn">Create one</button></p>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="main-app" class="container" style="display: none;">
         <h1>Instagram Comment Helper</h1>
         
         <div class="tabs">
@@ -351,14 +453,214 @@
     <div id="toast" class="toast"></div>
 
     <script>
-        // Data storage
-        let friends = JSON.parse(localStorage.getItem('instagram-friends') || '[]');
-        let comments = JSON.parse(localStorage.getItem('instagram-comments') || '[]');
+        // Global state
+        let friends = [];
+        let comments = [];
+        let currentUser = null;
+        let isAuthMode = true; // true for sign in, false for sign up
+        let syncStatus = 'offline';
 
-        // Save data to localStorage
-        function saveData() {
-            localStorage.setItem('instagram-friends', JSON.stringify(friends));
-            localStorage.setItem('instagram-comments', JSON.stringify(comments));
+        // Wait for Firebase to load
+        window.addEventListener('load', function() {
+            setTimeout(initApp, 100);
+        });
+
+        function initApp() {
+            if (!window.auth) {
+                setTimeout(initApp, 100);
+                return;
+            }
+            
+            // Set up auth state listener
+            window.onAuthStateChanged(window.auth, (user) => {
+                if (user) {
+                    currentUser = user;
+                    showMainApp();
+                    loadUserData();
+                } else {
+                    currentUser = null;
+                    showAuthScreen();
+                }
+            });
+            
+            // Set up auth form
+            setupAuthForm();
+        }
+
+        function showAuthScreen() {
+            document.getElementById('auth-screen').style.display = 'block';
+            document.getElementById('main-app').style.display = 'none';
+        }
+
+        function showMainApp() {
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('main-app').style.display = 'block';
+            
+            // Add user info bar
+            const userInfo = `
+                <div class="user-info">
+                    <span>Signed in as: ${currentUser.email}</span>
+                    <button class="btn btn-secondary" onclick="signOutUser()">Sign Out</button>
+                </div>
+                <div id="sync-status" class="sync-status"></div>
+            `;
+            document.getElementById('main-app').innerHTML = userInfo + document.getElementById('main-app').innerHTML;
+        }
+
+        function setupAuthForm() {
+            const emailInput = document.getElementById('auth-email');
+            const passwordInput = document.getElementById('auth-password');
+            const submitBtn = document.getElementById('auth-submit');
+            const toggleBtn = document.getElementById('auth-toggle-btn');
+            const toggleText = document.getElementById('auth-toggle-text');
+            const errorDiv = document.getElementById('auth-error');
+
+            // Toggle between sign in and sign up
+            toggleBtn.addEventListener('click', () => {
+                isAuthMode = !isAuthMode;
+                if (isAuthMode) {
+                    submitBtn.textContent = 'Sign In';
+                    toggleText.innerHTML = 'Don\'t have an account? <button id="auth-toggle-btn">Create one</button>';
+                } else {
+                    submitBtn.textContent = 'Create Account';
+                    toggleText.innerHTML = 'Already have an account? <button id="auth-toggle-btn">Sign in</button>';
+                }
+                // Re-attach event listener to new button
+                document.getElementById('auth-toggle-btn').addEventListener('click', arguments.callee);
+                errorDiv.style.display = 'none';
+            });
+
+            // Form submission
+            submitBtn.addEventListener('click', async () => {
+                const email = emailInput.value.trim();
+                const password = passwordInput.value;
+                
+                if (!email || !password) {
+                    showAuthError('Please fill in all fields');
+                    return;
+                }
+
+                if (password.length < 6) {
+                    showAuthError('Password must be at least 6 characters');
+                    return;
+                }
+
+                try {
+                    if (isAuthMode) {
+                        await window.signInWithEmailAndPassword(window.auth, email, password);
+                    } else {
+                        await window.createUserWithEmailAndPassword(window.auth, email, password);
+                    }
+                } catch (error) {
+                    showAuthError(error.message);
+                }
+            });
+
+            // Enter key support
+            [emailInput, passwordInput].forEach(input => {
+                input.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') submitBtn.click();
+                });
+            });
+        }
+
+        function showAuthError(message) {
+            const errorDiv = document.getElementById('auth-error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        function signOutUser() {
+            window.signOut(window.auth).then(() => {
+                showToast('Signed out successfully');
+            });
+        }
+
+        // Data management with Firebase sync
+        async function loadUserData() {
+            try {
+                setSyncStatus('syncing');
+                const userDoc = await window.getDoc(window.doc(window.db, 'users', currentUser.uid));
+                
+                if (userDoc.exists()) {
+                    const data = userDoc.data();
+                    friends = data.friends || [];
+                    comments = data.comments || [];
+                } else {
+                    // Try to migrate from localStorage if available
+                    const localFriends = JSON.parse(localStorage.getItem('instagram-friends') || '[]');
+                    const localComments = JSON.parse(localStorage.getItem('instagram-comments') || '[]');
+                    
+                    if (localFriends.length > 0 || localComments.length > 0) {
+                        friends = localFriends;
+                        comments = localComments;
+                        await saveUserData();
+                        showToast('Migrated local data to cloud!');
+                    }
+                }
+                
+                setSyncStatus('synced');
+                renderAll();
+            } catch (error) {
+                console.error('Error loading data:', error);
+                setSyncStatus('error');
+                // Fallback to localStorage
+                friends = JSON.parse(localStorage.getItem('instagram-friends') || '[]');
+                comments = JSON.parse(localStorage.getItem('instagram-comments') || '[]');
+                renderAll();
+            }
+        }
+
+        async function saveUserData() {
+            if (!currentUser) return;
+            
+            try {
+                setSyncStatus('syncing');
+                await window.setDoc(window.doc(window.db, 'users', currentUser.uid), {
+                    friends: friends,
+                    comments: comments,
+                    lastUpdated: new Date().toISOString()
+                });
+                setSyncStatus('synced');
+                
+                // Also save to localStorage as backup
+                localStorage.setItem('instagram-friends', JSON.stringify(friends));
+                localStorage.setItem('instagram-comments', JSON.stringify(comments));
+            } catch (error) {
+                console.error('Error saving data:', error);
+                setSyncStatus('error');
+                // Fallback to localStorage only
+                localStorage.setItem('instagram-friends', JSON.stringify(friends));
+                localStorage.setItem('instagram-comments', JSON.stringify(comments));
+            }
+        }
+
+        function setSyncStatus(status) {
+            syncStatus = status;
+            const statusEl = document.getElementById('sync-status');
+            if (!statusEl) return;
+            
+            statusEl.className = `sync-status ${status}`;
+            switch (status) {
+                case 'synced':
+                    statusEl.textContent = '✓ Data synced across devices';
+                    break;
+                case 'syncing':
+                    statusEl.textContent = '⟳ Syncing...';
+                    break;
+                case 'error':
+                    statusEl.textContent = '⚠ Sync error - using local storage';
+                    break;
+                case 'offline':
+                    statusEl.textContent = '📴 Working offline';
+                    break;
+            }
+        }
+
+        function renderAll() {
+            renderDashboard();
+            renderFriends();
+            renderComments();
         }
 
         // Show toast notification
@@ -420,22 +722,22 @@
             });
             
             input.value = '';
-            saveData();
+            await saveUserData();
             renderFriends();
             showToast('Friend added!');
         }
 
-        function deleteFriend(handle) {
+        async function deleteFriend(handle) {
             friends = friends.filter(f => f.handle !== handle);
             // Reorder remaining friends
             friends.forEach((f, index) => f.order = index);
-            saveData();
+            await saveUserData();
             renderFriends();
             renderDashboard();
             showToast('Friend deleted!');
         }
 
-        function markFriendDone(handle) {
+        async function markFriendDone(handle) {
             const friend = friends.find(f => f.handle === handle);
             if (!friend) return;
             
@@ -446,13 +748,13 @@
             const maxOrder = Math.max(...friends.map(f => f.order));
             friend.order = maxOrder + 1;
             
-            saveData();
+            await saveUserData();
             renderDashboard();
             showToast('Marked as done! Friend moved to back of queue.');
         }
 
         // Comment management
-        function addComment() {
+        async function addComment() {
             const input = document.getElementById('comment-input');
             const comment = input.value.trim();
             
@@ -466,15 +768,15 @@
             
             comments.push(comment);
             input.value = '';
-            saveData();
+            await saveUserData();
             renderComments();
             renderDashboard();
             showToast('Comment added!');
         }
 
-        function deleteComment(comment) {
+        async function deleteComment(comment) {
             comments = comments.filter(c => c !== comment);
-            saveData();
+            await saveUserData();
             renderComments();
             renderDashboard();
             showToast('Comment deleted!');
@@ -647,10 +949,10 @@
             if (e.key === 'Enter') addComment();
         });
 
-        // Initial render
-        renderDashboard();
-        renderFriends();
-        renderComments();
+        // Initial render - but wait for auth
+        // renderDashboard();
+        // renderFriends();
+        // renderComments();
     </script>
 </body>
 </html>
