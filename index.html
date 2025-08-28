@@ -399,22 +399,62 @@
     </style>
 </head>
 <body>
-    <!-- Authentication Screen -->
-    <div id="auth-screen" class="auth-container" style="display: none;">
+    <!-- Authentication Screen - START VISIBLE -->
+    <div id="auth-screen" class="auth-container" style="display: block;">
         <h1>Instagram Comment Helper</h1>
         <div class="auth-form">
-            <input type="email" id="auth-email" class="input" placeholder="Email" required />
-            <input type="password" id="auth-password" class="input" placeholder="Password" required />
+            <input type="email" id="auth-email" class="input" placeholder="Email (try: test@example.com)" required />
+            <input type="password" id="auth-password" class="input" placeholder="Password (try: testpass123)" required />
             <button id="auth-submit" class="btn btn-primary">Sign In</button>
             <div id="auth-error" style="color: #e74c3c; text-align: center; display: none;"></div>
         </div>
         <div class="auth-toggle">
             <p id="auth-toggle-text">Don't have an account? <button id="auth-toggle-btn">Create one</button></p>
         </div>
+        <div style="margin-top: 30px; padding: 15px; background: #f8f9fa; border-radius: 4px; font-size: 14px; color: #666;">
+            <strong>Test Account:</strong><br>
+            Email: test@example.com<br>
+            Password: testpass123<br>
+            <em>Or create your own account!</em>
+        </div>
     </div>
 
-    <!-- Main App -->
+    <!-- Main App - START HIDDEN -->
     <div id="main-app" class="container" style="display: none;">
+        <h1>Instagram Comment Helper</h1>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('dashboard')">Daily Dashboard</button>
+            <button class="tab" onclick="showTab('friends')">Friends Manager</button>
+            <button class="tab" onclick="showTab('comments')">Comment Bank</button>
+        </div>
+
+        <!-- Daily Dashboard -->
+        <div id="dashboard" class="tab-content active">
+            <h2 class="section-title">Today's Friend Queue</h2>
+            <div id="dashboard-content"></div>
+        </div>
+
+        <!-- Friends Manager -->
+        <div id="friends" class="tab-content">
+            <h2 class="section-title">Friends</h2>
+            <div class="input-group">
+                <input type="text" id="friend-input" class="input" placeholder="Enter Instagram handle (e.g., @alex_music)" />
+                <button class="btn btn-primary" onclick="addFriend()">+ Add Friend</button>
+            </div>
+            <div id="friends-list"></div>
+        </div>
+
+        <!-- Comment Bank -->
+        <div id="comments" class="tab-content">
+            <h2 class="section-title">Comment Bank</h2>
+            <div class="input-group">
+                <input type="text" id="comment-input" class="input" placeholder="Enter a supportive comment" />
+                <button class="btn btn-primary" onclick="addComment()">+ Add Comment</button>
+            </div>
+            <div id="comments-list"></div>
+        </div>
+    </div>
         <h1>Instagram Comment Helper</h1>
         
         <div class="tabs">
@@ -462,50 +502,138 @@
 
         // Wait for Firebase to load
         window.addEventListener('load', function() {
+            console.log('🚀 Page loaded, initializing app...');
             setTimeout(initApp, 100);
         });
 
         function initApp() {
-            if (!window.auth) {
+            console.log('🔥 InitApp called, checking Firebase availability...');
+            
+            if (window.firebaseError) {
+                console.error('💥 Firebase failed to initialize:', window.firebaseError);
+                alert('Firebase failed to load. Please refresh the page.');
+                return;
+            }
+            
+            if (!window.firebaseReady || !window.auth) {
+                console.log('⏳ Firebase auth not ready, retrying in 100ms...');
                 setTimeout(initApp, 100);
                 return;
             }
             
+            console.log('✅ Firebase auth is available');
+            console.log('🎯 Current auth state:', window.auth.currentUser);
+            
+            // Initialize display - start with auth screen
+            console.log('📱 Initializing display...');
+            initializeDisplay();
+            
             // Set up auth state listener
+            console.log('👂 Setting up auth state listener...');
             window.onAuthStateChanged(window.auth, (user) => {
+                console.log('🔄 Auth state changed:', user ? `User: ${user.email}` : 'No user');
                 if (user) {
                     currentUser = user;
+                    console.log('➡️ Showing main app...');
                     showMainApp();
                     loadUserData();
                 } else {
                     currentUser = null;
+                    console.log('➡️ Showing auth screen...');
                     showAuthScreen();
                 }
             });
             
             // Set up auth form
+            console.log('📝 Setting up auth form...');
             setupAuthForm();
         }
 
         function showAuthScreen() {
-            document.getElementById('auth-screen').style.display = 'block';
-            document.getElementById('main-app').style.display = 'none';
+            console.log('🔐 Showing auth screen...');
+            const authScreen = document.getElementById('auth-screen');
+            const mainApp = document.getElementById('main-app');
+            
+            console.log('📊 Auth screen element:', authScreen ? 'Found' : 'NOT FOUND');
+            console.log('📊 Main app element:', mainApp ? 'Found' : 'NOT FOUND');
+            
+            if (authScreen) {
+                authScreen.style.display = 'block';
+                console.log('✅ Auth screen set to display: block');
+            }
+            if (mainApp) {
+                mainApp.style.display = 'none';
+                console.log('✅ Main app set to display: none');
+            }
         }
 
         function showMainApp() {
-            document.getElementById('auth-screen').style.display = 'none';
-            document.getElementById('main-app').style.display = 'block';
+            console.log('🏠 Showing main app...');
+            const authScreen = document.getElementById('auth-screen');
+            const mainApp = document.getElementById('main-app');
             
-            // Add user info bar
-            const userInfo = `
-                <div class="user-info">
-                    <span>Signed in as: ${currentUser.email}</span>
-                    <button class="btn btn-secondary" onclick="signOutUser()">Sign Out</button>
-                </div>
-                <div id="sync-status" class="sync-status"></div>
-            `;
-            document.getElementById('main-app').innerHTML = userInfo + document.getElementById('main-app').innerHTML;
+            console.log('📊 Auth screen element:', authScreen ? 'Found' : 'NOT FOUND');
+            console.log('📊 Main app element:', mainApp ? 'Found' : 'NOT FOUND');
+            
+            if (authScreen) {
+                authScreen.style.display = 'none';
+                console.log('✅ Auth screen set to display: none');
+            }
+            if (mainApp) {
+                mainApp.style.display = 'block';
+                console.log('✅ Main app set to display: block');
+            }
+            
+            // Add user info bar at the top (only if not already added)
+            if (!document.querySelector('.user-info')) {
+                console.log('➕ Adding user info bar...');
+                const userInfoHTML = `
+                    <div class="user-info">
+                        <span>Signed in as: ${currentUser.email}</span>
+                        <button class="btn btn-secondary" onclick="signOutUser()">Sign Out</button>
+                    </div>
+                    <div id="sync-status" class="sync-status"></div>
+                `;
+                
+                const mainApp = document.getElementById('main-app');
+                mainApp.insertAdjacentHTML('afterbegin', userInfoHTML);
+                console.log('✅ User info bar added');
+            } else {
+                console.log('ℹ️ User info bar already exists');
+            }
         }
+
+        // Initialize with auth screen visible
+        function initializeDisplay() {
+            console.log('🎬 Initializing display - ensuring auth screen is visible...');
+            // Force auth screen visible immediately
+            const authScreen = document.getElementById('auth-screen');
+            const mainApp = document.getElementById('main-app');
+            
+            if (authScreen) {
+                authScreen.style.display = 'block';
+                console.log('✅ Auth screen forced to display: block');
+            } else {
+                console.error('❌ Auth screen element not found!');
+            }
+            
+            if (mainApp) {
+                mainApp.style.display = 'none';
+                console.log('✅ Main app forced to display: none');
+            } else {
+                console.error('❌ Main app element not found!');
+            }
+        }
+
+        // Fallback: Show auth screen immediately when DOM loads
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('📄 DOM loaded - emergency auth screen display');
+            const authScreen = document.getElementById('auth-screen');
+            if (authScreen) {
+                authScreen.style.display = 'block';
+                console.log('🚨 Emergency: Auth screen set to visible');
+            }
+        });
 
         function setupAuthForm() {
             const emailInput = document.getElementById('auth-email');
@@ -516,7 +644,7 @@
             const errorDiv = document.getElementById('auth-error');
 
             // Toggle between sign in and sign up
-            toggleBtn.addEventListener('click', () => {
+            toggleBtn.addEventListener('click', function toggleMode() {
                 isAuthMode = !isAuthMode;
                 if (isAuthMode) {
                     submitBtn.textContent = 'Sign In';
@@ -526,32 +654,47 @@
                     toggleText.innerHTML = 'Already have an account? <button id="auth-toggle-btn">Sign in</button>';
                 }
                 // Re-attach event listener to new button
-                document.getElementById('auth-toggle-btn').addEventListener('click', arguments.callee);
+                document.getElementById('auth-toggle-btn').addEventListener('click', toggleMode);
                 errorDiv.style.display = 'none';
             });
 
             // Form submission
             submitBtn.addEventListener('click', async () => {
+                console.log('🔘 Submit button clicked');
                 const email = emailInput.value.trim();
                 const password = passwordInput.value;
                 
+                console.log('📧 Email:', email);
+                console.log('🔑 Password length:', password.length);
+                console.log('🎯 Mode:', isAuthMode ? 'Sign In' : 'Create Account');
+                
                 if (!email || !password) {
+                    console.log('❌ Missing email or password');
                     showAuthError('Please fill in all fields');
                     return;
                 }
 
                 if (password.length < 6) {
+                    console.log('❌ Password too short');
                     showAuthError('Password must be at least 6 characters');
                     return;
                 }
 
+                console.log('🚀 Attempting authentication...');
                 try {
                     if (isAuthMode) {
-                        await window.signInWithEmailAndPassword(window.auth, email, password);
+                        console.log('📝 Signing in existing user...');
+                        const result = await window.signInWithEmailAndPassword(window.auth, email, password);
+                        console.log('✅ Sign in successful:', result.user.email);
                     } else {
-                        await window.createUserWithEmailAndPassword(window.auth, email, password);
+                        console.log('👤 Creating new user...');
+                        const result = await window.createUserWithEmailAndPassword(window.auth, email, password);
+                        console.log('✅ Account creation successful:', result.user.email);
                     }
                 } catch (error) {
+                    console.error('❌ Authentication error:', error);
+                    console.log('🔍 Error code:', error.code);
+                    console.log('🔍 Error message:', error.message);
                     showAuthError(error.message);
                 }
             });
@@ -661,6 +804,8 @@
             renderDashboard();
             renderFriends();
             renderComments();
+            // Set up enter key listeners after render
+            setTimeout(setupEnterKeyListeners, 100);
         }
 
         // Show toast notification
@@ -698,7 +843,7 @@
         }
 
         // Friend management
-        function addFriend() {
+        async function addFriend() {
             const input = document.getElementById('friend-input');
             let handle = input.value.trim();
             
@@ -941,13 +1086,22 @@
         }
 
         // Handle Enter key presses
-        document.getElementById('friend-input').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') addFriend();
-        });
-
-        document.getElementById('comment-input').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') addComment();
-        });
+        function setupEnterKeyListeners() {
+            const friendInput = document.getElementById('friend-input');
+            const commentInput = document.getElementById('comment-input');
+            
+            if (friendInput) {
+                friendInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') addFriend();
+                });
+            }
+            
+            if (commentInput) {
+                commentInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') addComment();
+                });
+            }
+        }
 
         // Initial render - but wait for auth
         // renderDashboard();
