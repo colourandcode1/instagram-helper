@@ -545,15 +545,27 @@
 
     <script>
         // Firebase configuration - YOU NEED TO REPLACE THESE WITH YOUR ACTUAL CONFIG
-        const firebaseConfig = {
-            apiKey: "your-api-key",
-            authDomain: "your-project.firebaseapp.com",
-            databaseURL: "https://your-project-default-rtdb.firebaseio.com/",
-            projectId: "your-project",
-            storageBucket: "your-project.appspot.com",
-            messagingSenderId: "123456789",
-            appId: "your-app-id"
-        };
+      // Import the functions you need from the SDKs you need
+    import { initializeApp } from "firebase/app";
+    import { getAnalytics } from "firebase/analytics";
+    // TODO: Add SDKs for Firebase products that you want to use
+    // https://firebase.google.com/docs/web/setup#available-libraries
+    
+    // Your web app's Firebase configuration
+    // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+    const firebaseConfig = {
+      apiKey: "AIzaSyA2ksO44JUzZ62ASZ_5ksq4k46ApZcAbXo",
+      authDomain: "instagram-helper-7540f.firebaseapp.com",
+      projectId: "instagram-helper-7540f",
+      storageBucket: "instagram-helper-7540f.firebasestorage.app",
+      messagingSenderId: "882798929067",
+      appId: "1:882798929067:web:f166ab744a788104c243ee",
+      measurementId: "G-VL8R7KW9ME"
+    };
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
 
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
