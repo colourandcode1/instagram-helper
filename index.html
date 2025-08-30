@@ -31,6 +31,113 @@
             color: #2c3e50;
         }
 
+        /* Authentication Styles */
+        .auth-container {
+            max-width: 400px;
+            margin: 50px auto;
+            background: white;
+            border-radius: 8px;
+            padding: 40px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .auth-title {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #2c3e50;
+            font-size: 24px;
+        }
+
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .auth-input {
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        .auth-input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        .auth-btn {
+            padding: 12px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .auth-btn:hover {
+            background: #2980b9;
+        }
+
+        .auth-btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+
+        .auth-switch {
+            text-align: center;
+            margin-top: 20px;
+            color: #7f8c8d;
+        }
+
+        .auth-switch a {
+            color: #3498db;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        .auth-switch a:hover {
+            text-decoration: underline;
+        }
+
+        .user-info {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .user-email {
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .logout-btn {
+            padding: 8px 16px;
+            background: #e74c3c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .logout-btn:hover {
+            background: #c0392b;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+        }
+
         .tabs {
             display: flex;
             margin-bottom: 30px;
@@ -269,6 +376,29 @@
             transform: translateX(0);
         }
 
+        .toast.error {
+            background: #e74c3c;
+        }
+
+        .sync-indicator {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 8px 12px;
+            background: rgba(52, 152, 219, 0.1);
+            color: #3498db;
+            border-radius: 4px;
+            font-size: 12px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .sync-indicator.syncing {
+            opacity: 1;
+            background: rgba(241, 196, 15, 0.1);
+            color: #f1c40f;
+        }
+
         @media (max-width: 600px) {
             .randomize-btn {
                 font-size: 12px;
@@ -306,11 +436,67 @@
             .btn {
                 width: 100%;
             }
+            
+            .auth-container {
+                margin: 20px auto;
+                padding: 30px 20px;
+            }
+        }
+
+        .hidden {
+            display: none !important;
         }
     </style>
 </head>
 <body>
-    <div class="container">
+    <!-- Loading Screen -->
+    <div id="loading-screen" class="loading">
+        <h2>Loading...</h2>
+        <p>Connecting to Firebase</p>
+    </div>
+
+    <!-- Authentication Screen -->
+    <div id="auth-screen" class="hidden">
+        <div class="auth-container">
+            <h1 class="auth-title">Instagram Comment Helper</h1>
+            
+            <!-- Login Form -->
+            <div id="login-form">
+                <h2 class="auth-title">Sign In</h2>
+                <form class="auth-form" onsubmit="loginUser(event)">
+                    <input type="email" id="login-email" class="auth-input" placeholder="Email" required>
+                    <input type="password" id="login-password" class="auth-input" placeholder="Password" required>
+                    <button type="submit" class="auth-btn">Sign In</button>
+                </form>
+                <div class="auth-switch">
+                    Don't have an account? <a onclick="showSignup()">Sign up</a>
+                </div>
+            </div>
+
+            <!-- Signup Form -->
+            <div id="signup-form" class="hidden">
+                <h2 class="auth-title">Create Account</h2>
+                <form class="auth-form" onsubmit="signupUser(event)">
+                    <input type="email" id="signup-email" class="auth-input" placeholder="Email" required>
+                    <input type="password" id="signup-password" class="auth-input" placeholder="Password (min 6 characters)" required minlength="6">
+                    <input type="password" id="signup-confirm" class="auth-input" placeholder="Confirm Password" required minlength="6">
+                    <button type="submit" class="auth-btn">Create Account</button>
+                </form>
+                <div class="auth-switch">
+                    Already have an account? <a onclick="showLogin()">Sign in</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main App Screen -->
+    <div id="app-screen" class="container hidden">
+        <!-- User Info -->
+        <div class="user-info">
+            <span class="user-email" id="user-email"></span>
+            <button class="logout-btn" onclick="logoutUser()">Sign Out</button>
+        </div>
+
         <h1>Instagram Comment Helper</h1>
         
         <div class="tabs">
@@ -346,24 +532,185 @@
         </div>
     </div>
 
+    <!-- Toast Notification -->
     <div id="toast" class="toast"></div>
+    
+    <!-- Sync Indicator -->
+    <div id="sync-indicator" class="sync-indicator">Synced</div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-app-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-auth-compat.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.23.0/firebase-database-compat.min.js"></script>
 
     <script>
-        // Data storage
-        let friends = JSON.parse(localStorage.getItem('instagram-friends') || '[]');
-        let comments = JSON.parse(localStorage.getItem('instagram-comments') || '[]');
+        // Firebase configuration - YOU NEED TO REPLACE THESE WITH YOUR ACTUAL CONFIG
+        const firebaseConfig = {
+            apiKey: "your-api-key",
+            authDomain: "your-project.firebaseapp.com",
+            databaseURL: "https://your-project-default-rtdb.firebaseio.com/",
+            projectId: "your-project",
+            storageBucket: "your-project.appspot.com",
+            messagingSenderId: "123456789",
+            appId: "your-app-id"
+        };
 
-        // Save data to localStorage
-        function saveData() {
-            localStorage.setItem('instagram-friends', JSON.stringify(friends));
-            localStorage.setItem('instagram-comments', JSON.stringify(comments));
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const database = firebase.database();
+
+        // Global variables
+        let currentUser = null;
+        let friends = [];
+        let comments = [];
+        let userDataRef = null;
+
+        // Initialize app
+        document.addEventListener('DOMContentLoaded', function() {
+            auth.onAuthStateChanged(function(user) {
+                document.getElementById('loading-screen').classList.add('hidden');
+                
+                if (user) {
+                    currentUser = user;
+                    showApp();
+                    initializeUserData();
+                } else {
+                    showAuth();
+                }
+            });
+        });
+
+        // Authentication Functions
+        function showAuth() {
+            document.getElementById('auth-screen').classList.remove('hidden');
+            document.getElementById('app-screen').classList.add('hidden');
         }
 
-        // Show toast notification
-        function showToast(message) {
+        function showApp() {
+            document.getElementById('auth-screen').classList.add('hidden');
+            document.getElementById('app-screen').classList.remove('hidden');
+            document.getElementById('user-email').textContent = currentUser.email;
+        }
+
+        function showLogin() {
+            document.getElementById('login-form').classList.remove('hidden');
+            document.getElementById('signup-form').classList.add('hidden');
+        }
+
+        function showSignup() {
+            document.getElementById('login-form').classList.add('hidden');
+            document.getElementById('signup-form').classList.remove('hidden');
+        }
+
+        async function loginUser(event) {
+            event.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
+            
+            try {
+                await auth.signInWithEmailAndPassword(email, password);
+                showToast('Signed in successfully!');
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        }
+
+        async function signupUser(event) {
+            event.preventDefault();
+            const email = document.getElementById('signup-email').value;
+            const password = document.getElementById('signup-password').value;
+            const confirmPassword = document.getElementById('signup-confirm').value;
+            
+            if (password !== confirmPassword) {
+                showToast('Passwords do not match!', 'error');
+                return;
+            }
+            
+            try {
+                await auth.createUserWithEmailAndPassword(email, password);
+                showToast('Account created successfully!');
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        }
+
+        async function logoutUser() {
+            try {
+                await auth.signOut();
+                showToast('Signed out successfully!');
+            } catch (error) {
+                showToast(error.message, 'error');
+            }
+        }
+
+        // Database Functions
+        function initializeUserData() {
+            if (!currentUser) return;
+            
+            userDataRef = database.ref('users/' + currentUser.uid);
+            
+            // Listen for changes in user data
+            userDataRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    friends = data.friends || [];
+                    comments = data.comments || [];
+                } else {
+                    // First time user - initialize empty data
+                    friends = [];
+                    comments = [];
+                    saveUserData();
+                }
+                
+                // Refresh all views
+                renderDashboard();
+                renderFriends();
+                renderComments();
+                
+                showSyncStatus('synced');
+            });
+        }
+
+        function saveUserData() {
+            if (!userDataRef) return;
+            
+            showSyncStatus('syncing');
+            
+            userDataRef.set({
+                friends: friends,
+                comments: comments,
+                lastUpdated: firebase.database.ServerValue.TIMESTAMP
+            }).then(() => {
+                showSyncStatus('synced');
+            }).catch((error) => {
+                console.error('Error saving data:', error);
+                showToast('Error syncing data', 'error');
+            });
+        }
+
+        function showSyncStatus(status) {
+            const indicator = document.getElementById('sync-indicator');
+            indicator.classList.remove('syncing');
+            
+            if (status === 'syncing') {
+                indicator.textContent = 'Syncing...';
+                indicator.classList.add('syncing');
+                indicator.style.opacity = '1';
+            } else {
+                indicator.textContent = 'Synced';
+                indicator.style.opacity = '1';
+                setTimeout(() => {
+                    indicator.style.opacity = '0';
+                }, 2000);
+            }
+        }
+
+        // Toast notification
+        function showToast(message, type = 'success') {
             const toast = document.getElementById('toast');
             toast.textContent = message;
-            toast.classList.add('show');
+            toast.className = 'toast show' + (type === 'error' ? ' error' : '');
             setTimeout(() => {
                 toast.classList.remove('show');
             }, 3000);
@@ -371,23 +718,17 @@
 
         // Tab management
         function showTab(tabName) {
-            // Hide all tab contents
             document.querySelectorAll('.tab-content').forEach(content => {
                 content.classList.remove('active');
             });
             
-            // Remove active class from all tabs
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.classList.remove('active');
             });
             
-            // Show selected tab content
             document.getElementById(tabName).classList.add('active');
-            
-            // Add active class to clicked tab
             event.target.classList.add('active');
             
-            // Refresh the content
             if (tabName === 'dashboard') renderDashboard();
             if (tabName === 'friends') renderFriends();
             if (tabName === 'comments') renderComments();
@@ -400,14 +741,12 @@
             
             if (!handle) return;
             
-            // Add @ if not present
             if (!handle.startsWith('@')) {
                 handle = '@' + handle;
             }
             
-            // Check for duplicates
             if (friends.find(f => f.handle === handle)) {
-                showToast('Friend already exists!');
+                showToast('Friend already exists!', 'error');
                 return;
             }
             
@@ -418,18 +757,14 @@
             });
             
             input.value = '';
-            saveData();
-            renderFriends();
+            saveUserData();
             showToast('Friend added!');
         }
 
         function deleteFriend(handle) {
             friends = friends.filter(f => f.handle !== handle);
-            // Reorder remaining friends
             friends.forEach((f, index) => f.order = index);
-            saveData();
-            renderFriends();
-            renderDashboard();
+            saveUserData();
             showToast('Friend deleted!');
         }
 
@@ -437,15 +772,11 @@
             const friend = friends.find(f => f.handle === handle);
             if (!friend) return;
             
-            // Update last commented date
             friend.lastCommented = new Date().toISOString().split('T')[0];
-            
-            // Move to back of queue
             const maxOrder = Math.max(...friends.map(f => f.order));
             friend.order = maxOrder + 1;
             
-            saveData();
-            renderDashboard();
+            saveUserData();
             showToast('Marked as done! Friend moved to back of queue.');
         }
 
@@ -456,35 +787,29 @@
             
             if (!comment) return;
             
-            // Check for duplicates
             if (comments.includes(comment)) {
-                showToast('Comment already exists!');
+                showToast('Comment already exists!', 'error');
                 return;
             }
             
             comments.push(comment);
             input.value = '';
-            saveData();
-            renderComments();
-            renderDashboard();
+            saveUserData();
             showToast('Comment added!');
         }
 
         function deleteComment(comment) {
             comments = comments.filter(c => c !== comment);
-            saveData();
-            renderComments();
-            renderDashboard();
+            saveUserData();
             showToast('Comment deleted!');
         }
 
-        // Copy to clipboard
+        // Utility functions
         async function copyToClipboard(text) {
             try {
                 await navigator.clipboard.writeText(text);
                 showToast('Comment copied to clipboard!');
             } catch (err) {
-                // Fallback for older browsers
                 const textArea = document.createElement('textarea');
                 textArea.value = text;
                 document.body.appendChild(textArea);
@@ -495,13 +820,11 @@
             }
         }
 
-        // Get random comment
         function getRandomComment() {
             if (comments.length === 0) return null;
             return comments[Math.floor(Math.random() * comments.length)];
         }
 
-        // Get random comment excluding current one
         function getRandomCommentExcluding(currentComment) {
             if (comments.length <= 1) return getRandomComment();
             let newComment;
@@ -511,7 +834,6 @@
             return newComment;
         }
 
-        // Randomize comment for a specific friend card
         function randomizeComment(friendHandle, cardElement) {
             const currentCommentElement = cardElement.querySelector('.suggested-comment');
             const currentComment = currentCommentElement.textContent.replace(/"/g, '');
@@ -519,43 +841,41 @@
             
             if (newComment) {
                 currentCommentElement.textContent = `"${newComment}"`;
-                // Update the copy button with new comment
                 const copyButton = cardElement.querySelector('.btn-primary');
                 copyButton.setAttribute('onclick', `copyToClipboard('${newComment.replace(/'/g, "\\'")}')`)
             }
         }
 
-        // Open Instagram profile with app fallback
         function openInstagramProfile(handle) {
             const username = handle.replace('@', '');
             const instagramAppUrl = `instagram://user?username=${username}`;
             const instagramWebUrl = `https://www.instagram.com/${username}/`;
             
-            // Try to open Instagram app first
             const fallbackTimer = setTimeout(() => {
-                // If app doesn't open within 2 seconds, open web version
                 window.open(instagramWebUrl, '_blank');
             }, 2000);
             
-            // Attempt to open Instagram app
             window.location.href = instagramAppUrl;
             
-            // Clear timeout if app opens successfully
             window.addEventListener('blur', () => {
                 clearTimeout(fallbackTimer);
             });
             
-            // Also clear timeout if user comes back quickly (app didn't open)
             setTimeout(() => {
                 clearTimeout(fallbackTimer);
             }, 500);
         }
 
-        // Format date
         function formatDate(dateString) {
             if (!dateString) return 'Never';
             const date = new Date(dateString);
             return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         // Render functions
@@ -572,25 +892,26 @@
                 return;
             }
             
-            // Sort friends by order and get first 5
             const sortedFriends = [...friends].sort((a, b) => a.order - b.order);
             const topFriends = sortedFriends.slice(0, 5);
             
             container.innerHTML = topFriends.map((friend, index) => {
                 const randomComment = getRandomComment();
                 const cardId = `friend-card-${index}`;
+                const escapedHandle = escapeHtml(friend.handle);
+                const escapedComment = escapeHtml(randomComment);
                 
                 return `
                     <div id="${cardId}" class="card friend-card">
-                        <div class="friend-handle">${friend.handle}</div>
-                        <button class="instagram-link" onclick="openInstagramProfile('${friend.handle}')">View Instagram Profile</button>
+                        <div class="friend-handle">${escapedHandle}</div>
+                        <button class="instagram-link" onclick="openInstagramProfile('${escapedHandle}')">View Instagram Profile</button>
                         <div class="comment-row">
-                            <div class="suggested-comment">"${randomComment}"</div>
-                            <button class="btn btn-secondary randomize-btn" onclick="randomizeComment('${friend.handle}', document.getElementById('${cardId}'))" title="Get different comment">🎲</button>
+                            <div class="suggested-comment">"${escapedComment}"</div>
+                            <button class="btn btn-secondary randomize-btn" onclick="randomizeComment('${escapedHandle}', document.getElementById('${cardId}'))" title="Get different comment">🎲</button>
                         </div>
                         <div class="button-group">
                             <button class="btn btn-primary" onclick="copyToClipboard('${randomComment.replace(/'/g, "\\'")}')">Copy Comment</button>
-                            <button class="btn btn-success" onclick="markFriendDone('${friend.handle}')">Mark Done</button>
+                            <button class="btn btn-success" onclick="markFriendDone('${escapedHandle}')">Mark Done</button>
                         </div>
                     </div>
                 `;
@@ -605,18 +926,20 @@
                 return;
             }
             
-            // Sort friends by order
             const sortedFriends = [...friends].sort((a, b) => a.order - b.order);
             
-            container.innerHTML = sortedFriends.map(friend => `
-                <div class="list-item">
-                    <div class="list-item-content">
-                        <div><strong>${friend.handle}</strong></div>
-                        <div class="list-item-meta">Last Commented: ${formatDate(friend.lastCommented)}</div>
+            container.innerHTML = sortedFriends.map(friend => {
+                const escapedHandle = escapeHtml(friend.handle);
+                return `
+                    <div class="list-item">
+                        <div class="list-item-content">
+                            <div><strong>${escapedHandle}</strong></div>
+                            <div class="list-item-meta">Last Commented: ${formatDate(friend.lastCommented)}</div>
+                        </div>
+                        <button class="btn btn-danger" onclick="deleteFriend('${escapedHandle}')">Delete</button>
                     </div>
-                    <button class="btn btn-danger" onclick="deleteFriend('${friend.handle}')">Delete</button>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         function renderComments() {
@@ -627,29 +950,36 @@
                 return;
             }
             
-            container.innerHTML = comments.map(comment => `
-                <div class="list-item">
-                    <div class="list-item-content">
-                        <div>"${comment}"</div>
+            container.innerHTML = comments.map(comment => {
+                const escapedComment = escapeHtml(comment);
+                return `
+                    <div class="list-item">
+                        <div class="list-item-content">
+                            <div>"${escapedComment}"</div>
+                        </div>
+                        <button class="btn btn-danger" onclick="deleteComment('${comment.replace(/'/g, "\\'")}')">Delete</button>
                     </div>
-                    <button class="btn btn-danger" onclick="deleteComment('${comment.replace(/'/g, "\\'")}')">Delete</button>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         // Handle Enter key presses
-        document.getElementById('friend-input').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') addFriend();
+        document.addEventListener('DOMContentLoaded', function() {
+            const friendInput = document.getElementById('friend-input');
+            const commentInput = document.getElementById('comment-input');
+            
+            if (friendInput) {
+                friendInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') addFriend();
+                });
+            }
+            
+            if (commentInput) {
+                commentInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') addComment();
+                });
+            }
         });
-
-        document.getElementById('comment-input').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') addComment();
-        });
-
-        // Initial render
-        renderDashboard();
-        renderFriends();
-        renderComments();
     </script>
 </body>
 </html>
