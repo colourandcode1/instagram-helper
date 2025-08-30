@@ -438,6 +438,11 @@
             <button class="logout-btn" onclick="logoutUser()">Sign Out</button>
         </div>
         
+        <!-- Database Test Button (Remove after testing) -->
+        <div style="text-align: center; margin: 10px 0;">
+            <button onclick="testDatabase()" style="padding: 8px 16px; background: #f39c12; color: white; border: none; border-radius: 4px; cursor: pointer;">Test Database Connection</button>
+        </div>
+        
         <h1>Instagram Comment Helper</h1>
         
         <div class="tabs">
@@ -486,10 +491,11 @@
     
     <script>
         // Firebase configuration
+        // IMPORTANT: Update databaseURL if your database is in a different region
         const firebaseConfig = {
             apiKey: "AIzaSyA2ksO44JUzZ62ASZ_5ksq4k46ApZcAbXo",
             authDomain: "instagram-helper-7540f.firebaseapp.com",
-            databaseURL: "https://console.firebase.google.com/u/0/project/instagram-helper-7540f/database/instagram-helper-7540f-default-rtdb/data/~2F",
+            databaseURL: "https://console.firebase.google.com/u/0/project/instagram-helper-7540f/database/instagram-helper-7540f-default-rtdb/data/~2Fm", // Update this if needed
             projectId: "instagram-helper-7540f",
             storageBucket: "instagram-helper-7540f.firebasestorage.app",
             messagingSenderId: "882798929067",
@@ -630,6 +636,7 @@
         function initializeUserData() {
             if (!currentUser) return;
             
+            console.log('Initializing user data for:', currentUser.uid);
             userDataRef = database.ref('users/' + currentUser.uid);
             
             // Remove old listener if exists
@@ -637,14 +644,26 @@
                 userDataRef.off('value', dataListener);
             }
             
+            // Test database connectivity first
+            database.ref('.info/connected').on('value', (snapshot) => {
+                const connected = snapshot.val();
+                console.log('Firebase connection status:', connected);
+                if (!connected) {
+                    showToast('Connecting to database...', 'error');
+                }
+            });
+            
             // Listen for changes in user data
             dataListener = (snapshot) => {
+                console.log('Data snapshot received:', snapshot.exists());
                 const data = snapshot.val();
                 if (data) {
                     friends = data.friends || [];
                     comments = data.comments || [];
+                    console.log('Loaded data - Friends:', friends.length, 'Comments:', comments.length);
                 } else {
                     // First time user - initialize empty data
+                    console.log('No existing data, initializing new user');
                     friends = [];
                     comments = [];
                     saveUserData();
@@ -658,24 +677,63 @@
                 showSyncStatus('synced');
             };
             
-            userDataRef.on('value', dataListener);
+            // Add error handler for the listener
+            userDataRef.on('value', dataListener, (error) => {
+                console.error('Firebase read error:', error);
+                showToast('Database read error: ' + error.message, 'error');
+                
+                // Show detailed error info
+                if (error.code === 'PERMISSION_DENIED') {
+                    showToast('Permission denied. Check Firebase Database rules.', 'error');
+                    console.error('Firebase Database rules need to be configured. See console for details.');
+                    console.log(`
+                        Please set your Firebase Realtime Database rules to:
+                        {
+                          "rules": {
+                            "users": {
+                              "$uid": {
+                                ".read": "$uid === auth.uid",
+                                ".write": "$uid === auth.uid"
+                              }
+                            }
+                          }
+                        }
+                    `);
+                }
+            });
         }
         
         function saveUserData() {
-            if (!userDataRef) return;
+            if (!userDataRef) {
+                console.error('No database reference available');
+                return;
+            }
             
             showSyncStatus('syncing');
             
-            userDataRef.set({
+            const dataToSave = {
                 friends: friends,
                 comments: comments,
                 lastUpdated: firebase.database.ServerValue.TIMESTAMP
-            }).then(() => {
+            };
+            
+            console.log('Attempting to save data:', {
+                friends: friends.length,
+                comments: comments.length
+            });
+            
+            userDataRef.set(dataToSave).then(() => {
+                console.log('Data saved successfully');
                 showSyncStatus('synced');
             }).catch((error) => {
                 console.error('Error saving data:', error);
-                showToast('Error syncing data', 'error');
+                showToast('Error syncing data: ' + error.message, 'error');
                 showSyncStatus('error');
+                
+                // Show detailed error info
+                if (error.code === 'PERMISSION_DENIED') {
+                    showToast('Permission denied. Check Firebase Database rules.', 'error');
+                }
             });
         }
         
@@ -999,6 +1057,69 @@
             });
             
             container.innerHTML = html;
+        }
+        
+        // Diagnostic function to test database connection
+        async function testDatabase() {
+            console.log('Starting database test...');
+            showToast('Testing database connection...', 'success');
+            
+            if (!currentUser) {
+                showToast('No user logged in!', 'error');
+                return;
+            }
+            
+            try {
+                // Test 1: Check connection status
+                const connectedRef = database.ref('.info/connected');
+                connectedRef.once('value').then((snapshot) => {
+                    console.log('Connection status:', snapshot.val());
+                });
+                
+                // Test 2: Try to write test data
+                const testRef = database.ref('users/' + currentUser.uid + '/test');
+                await testRef.set({
+                    timestamp: firebase.database.ServerValue.TIMESTAMP,
+                    message: 'Test successful'
+                });
+                
+                console.log('Write test successful');
+                
+                // Test 3: Try to read the test data
+                const snapshot = await testRef.once('value');
+                const testData = snapshot.val();
+                console.log('Read test successful:', testData);
+                
+                // Clean up test data
+                await testRef.remove();
+                
+                showToast('Database connection successful! ✓', 'success');
+                console.log('All database tests passed!');
+                
+            } catch (error) {
+                console.error('Database test failed:', error);
+                showToast('Database test failed: ' + error.message, 'error');
+                
+                if (error.code === 'PERMISSION_DENIED') {
+                    alert(`
+Database Permission Denied!
+
+Please go to Firebase Console > Realtime Database > Rules
+and set the following rules:
+
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "$uid === auth.uid",
+        ".write": "$uid === auth.uid"
+      }
+    }
+  }
+}
+                    `);
+                }
+            }
         }
         
         // Handle Enter key presses for input fields
